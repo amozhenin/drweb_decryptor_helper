@@ -22,7 +22,8 @@ public class Application {
         DirectoryScanner ds = new DirectoryScanner();
         List<File> cryptedFiles = ds.scanDirectory(dir);
         System.out.println("End scanning");
-        System.out.println(cryptedFiles.size() + " files found");
-
+        FileProcessor fileProcessor = new FileProcessor(cryptedFiles);
+        fileProcessor.processFiles();
+        fileProcessor.showStatistics();
     }
 }
