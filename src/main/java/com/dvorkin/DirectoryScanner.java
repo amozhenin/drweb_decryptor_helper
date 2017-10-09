@@ -1,6 +1,9 @@
 package com.dvorkin;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,7 +27,14 @@ public class DirectoryScanner {
         }
         File[] children = dir.listFiles();
         if (children == null) {
-            System.out.println("Something strange in " + dir.getAbsolutePath());
+            System.out.println("Something strange in " + dir.getAbsolutePath() + ", skipping its processing");
+            try {
+                BasicFileAttributes attrs = Files.readAttributes(dir.toPath(), BasicFileAttributes.class);
+                System.out.println("canRead: " + dir.canRead() + ", isLink: " + attrs.isSymbolicLink() + ", isOther: "
+                        + attrs.isOther() + ", isRegularFile: " + attrs.isRegularFile());
+            } catch (IOException e) {
+                System.out.println("Error retrieving info about strange object:" + e.getMessage());
+            }
             return ret;
         }
         for (File child : children) {
