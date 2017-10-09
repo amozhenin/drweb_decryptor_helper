@@ -194,17 +194,39 @@ public class FileProcessor {
         List<String> commandArguments = new ArrayList<>(3);
         switch (context.getFileType()) {
             case EMPTY:
-                commandArguments.add("\"C:\\Program Files\\Far2\\Far.exe\"");
-                commandArguments.add("/v");
-                break;
             case TEXT:
+            case XML:
+            case CSV:
+            case SQL:
                 commandArguments.add("\"C:\\Program Files\\Far2\\Far.exe\"");
                 commandArguments.add("/v");
                 break;
-//            case IMAGE:
-//                break;
-//            case VIDEO:
-//                break;
+            case PDF:
+                commandArguments.add("\"C:\\Program Files (x86)\\Adobe\\Reader 10.0\\Reader\\AcroRd32.exe\"");
+                break;
+            case IMAGE1:
+            case IMAGE2:
+                commandArguments.add("C:\\Windows\\System32\\mspaint.exe");
+                break;
+            case ARCHIVE1:
+            case ARCHIVE2:
+                commandArguments.add("\"C:\\Program Files\\7-Zip\\7zFM.exe\"");
+                break;
+            case EXCEL1:
+            case EXCEL2:
+                commandArguments.add("\"C:\\Program Files\\Microsoft Office\\Office14\\EXCEL.EXE\"");
+                break;
+//            case WORD1:
+//            case WORD2:
+            case WORD3:
+                commandArguments.add("\"C:\\Program Files\\Microsoft Office\\Office14\\WINWORD.EXE\"");
+                break;
+            case VIDEO1:
+            case VIDEO2:
+            case VIDEO3:
+            case AUDIO1:
+                commandArguments.add("\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"");
+                break;
             case UNKNOWN:
                 throw new RuntimeException("Unknown type should not present");
             default:
