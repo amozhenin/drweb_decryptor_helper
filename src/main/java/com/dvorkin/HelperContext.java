@@ -1,6 +1,8 @@
 package com.dvorkin;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This class is used to store various data and status of the process
@@ -13,7 +15,7 @@ public class HelperContext {
     private File encryptedFile;
 
     //This file is created by DrWeb when it is decrypted
-    private File decryptedFile;
+    private List<File> decryptedFileList;
 
     //This is the file created by the virus. We are searching for them
     private File cryptoFile;
@@ -23,6 +25,7 @@ public class HelperContext {
 
     public HelperContext() {
         status = ProcessingStatus.NOT_PROCESSED;
+        decryptedFileList = new ArrayList<>(1);
     }
 
 
@@ -34,12 +37,19 @@ public class HelperContext {
         this.encryptedFile = encryptedFile;
     }
 
-    public File getDecryptedFile() {
-        return decryptedFile;
+    public List<File> getDecryptedFileList() {
+        return decryptedFileList;
     }
 
-    public void setDecryptedFile(File decryptedFile) {
-        this.decryptedFile = decryptedFile;
+    public void addDecryptedFile(File decryptedFile) {
+        this.decryptedFileList.add(decryptedFile);
+    }
+
+    public File getDecryptedFile() {
+        if (decryptedFileList.size() != 1) {
+            throw new RuntimeException("Precondition failed, size is " + decryptedFileList.size());
+        }
+        return decryptedFileList.get(0);
     }
 
     public File getCryptoFile() {

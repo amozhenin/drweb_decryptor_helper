@@ -1,5 +1,7 @@
 package com.dvorkin;
 
+import org.apache.commons.io.FileUtils;
+
 import javax.swing.JOptionPane;
 import java.io.File;
 import java.io.FileInputStream;
@@ -43,19 +45,26 @@ public class FileProcessor {
             String extension;
             String name;
             String decryptedFileName;
-            if (extensionIndex == -1) {
-                name = originalFileName;
-                extension = "";
-                decryptedFileName = name + "(0)";
-            } else {
-                name = originalFileName.substring(0, extensionIndex);
-                extension = originalFileName.substring(extensionIndex + 1);
-                decryptedFileName = name + "(0)." + extension;
+            int copyIndex = 0;
+            while (true) {
+                if (extensionIndex == -1) {
+                    name = originalFileName;
+                    extension = "";
+                    decryptedFileName = name + "(" + copyIndex + ")";
+                } else {
+                    name = originalFileName.substring(0, extensionIndex);
+                    extension = originalFileName.substring(extensionIndex + 1);
+                    decryptedFileName = name + "(" + copyIndex + ")." + extension;
+                }
+                File decryptedFile = new File(cryptoFile.getParentFile(), decryptedFileName);
+                if (decryptedFile.exists()) {
+                    context.addDecryptedFile(decryptedFile);
+                    copyIndex++;
+                } else {
+                    break;
+                }
             }
-            File decryptedFile = new File(cryptoFile.getParentFile(), decryptedFileName);
-            if (decryptedFile.exists()) {
-                context.setDecryptedFile(decryptedFile);
-            }
+            statCollector.registerAdditionalCopies(context.getDecryptedFileList().size() - 1);
             FileType fileType = FileType.getByExtension(extension);
             context.setFileType(fileType);
             if (FileType.UNKNOWN == fileType) {
@@ -68,63 +77,114 @@ public class FileProcessor {
         data.forEach(context -> {
             if (context.getEncryptedFile() == null) {
                 statCollector.registerMissingEncryptedFile(context);
-            } else if (context.getDecryptedFile() == null) {
+            } else if (context.getDecryptedFileList().isEmpty()) {
                 statCollector.registerMissingDecryptedFile(context);
             } else {
-                if (!ensureRealEncryption(context)) {
-                    statCollector.registerNotRealEncryption(context);
-                } else {
-                    if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
-                        activateHumanCheck(context);
+                boolean singleDecryptedCopy = true;
+                if (context.getDecryptedFileList().size() > 1) {
+                  singleDecryptedCopy = handleMultipleDecryptions(context);
+                }
+                if (singleDecryptedCopy) {
+                    handleDecryption(context);
+                }
+            }
+        });
+        postCollectStatistics();
+    }
 
-                        String message = "You have just saw file \"" +
-                                context.getDecryptedFile().getAbsolutePath() +
-                                "\", is the content OK and it should be restored?";
-                        int ret = JOptionPane.showConfirmDialog(null, message,
-                                "Restore the file?", JOptionPane.YES_NO_CANCEL_OPTION);
-                        //0 means YES, 1 means NO, 2 means CANCEL, -1 means user closed the dialog
-                        if (ret == 2 || ret == -1) {
-                            setStopFlag(); //eny attempt to close dialog without choosing means user wants to stop us
-                            context.setStatus(ProcessingStatus.REJECT);
-                        } else if (ret == 1) {
-                            context.setStatus(ProcessingStatus.REJECT);
-                        } else if (ret == 0) {
-                            boolean deleted = context.getEncryptedFile().delete();
-                            if (!deleted) {
+    private void handleDecryption(HelperContext context) {
+        if (!ensureRealEncryption(context)) {
+            statCollector.registerNotRealEncryption(context);
+        } else {
+            if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+                activateHumanCheck(context);
+
+                String message = "You have just saw file \"" +
+                        context.getDecryptedFile().getAbsolutePath() +
+                        "\", is the content OK and it should be restored?";
+                int ret = JOptionPane.showConfirmDialog(null, message,
+                        "Restore the file?", JOptionPane.YES_NO_CANCEL_OPTION);
+                //0 means YES, 1 means NO, 2 means CANCEL, -1 means user closed the dialog
+                if (ret == 2 || ret == -1) {
+                    setStopFlag(); //eny attempt to close dialog without choosing means user wants to stop us
+                    context.setStatus(ProcessingStatus.REJECT);
+                } else if (ret == 1) {
+                    context.setStatus(ProcessingStatus.REJECT);
+                } else if (ret == 0) {
+                    boolean deleted = context.getEncryptedFile().delete();
+                    if (!deleted) {
+                        context.setStatus(ProcessingStatus.FAILURE);
+                    } else {
+                        deleted = context.getCryptoFile().delete();
+                        if (!deleted) {
+                            context.setStatus(ProcessingStatus.FAILURE);
+                        } else {
+                            Path path = context.getDecryptedFile().toPath();
+                            DosFileAttributeView view = Files.getFileAttributeView(path, DosFileAttributeView.class);
+                            if (view == null) {
                                 context.setStatus(ProcessingStatus.FAILURE);
                             } else {
-                                deleted = context.getCryptoFile().delete();
-                                if (!deleted) {
-                                    context.setStatus(ProcessingStatus.FAILURE);
-                                } else {
-                                    Path path = context.getDecryptedFile().toPath();
-                                    DosFileAttributeView view = Files.getFileAttributeView(path, DosFileAttributeView.class);
-                                    if (view == null) {
-                                        context.setStatus(ProcessingStatus.FAILURE);
+                                try {
+                                    view.setArchive(false);
+                                    view.setSystem(false);
+                                    view.setReadOnly(false);
+                                    view.setHidden(false);
+                                    boolean renamed = context.getDecryptedFile().renameTo(context.getEncryptedFile());
+                                    if (renamed) {
+                                        context.setStatus(ProcessingStatus.SUCCESS);
                                     } else {
-                                        try {
-                                            view.setArchive(false);
-                                            view.setSystem(false);
-                                            view.setReadOnly(false);
-                                            view.setHidden(false);
-                                            boolean renamed = context.getDecryptedFile().renameTo(context.getEncryptedFile());
-                                            if (renamed) {
-                                                context.setStatus(ProcessingStatus.SUCCESS);
-                                            } else {
-                                                context.setStatus(ProcessingStatus.FAILURE);
-                                            }
-                                        } catch (IOException e) {
-                                            context.setStatus(ProcessingStatus.FAILURE);
-                                        }
+                                        context.setStatus(ProcessingStatus.FAILURE);
                                     }
+                                } catch (IOException e) {
+                                    context.setStatus(ProcessingStatus.FAILURE);
                                 }
                             }
                         }
                     }
                 }
             }
-        });
-        postCollectStatistics();
+        }
+    }
+
+    /**
+     *  Method handles only multiple copies, leaving just single copy
+     */
+    private boolean handleMultipleDecryptions(HelperContext context) {
+        List<File> decryptedCopies = context.getDecryptedFileList();
+        File firstCopy = decryptedCopies.get(0);
+        boolean ret = true;
+        try {
+            for (int i = 1; i < decryptedCopies.size(); i++) {
+                if (!FileUtils.contentEquals(firstCopy, decryptedCopies.get(i))) {
+                    System.out.println("Found different copies of decrypted file " + context.getEncryptedFile().getAbsolutePath()
+                            + " Seems like this file needs to be reported to DrWeb for further help with decryption");
+                    statCollector.registerStrangeFile(context);
+                    context.setStatus(ProcessingStatus.FAILURE);
+                    ret = false;
+                    break;
+                }
+            }
+            if (ret) {
+                for (int i = 1; i < decryptedCopies.size(); i++) {
+                    ret = decryptedCopies.get(i).delete();
+                    if (!ret) {
+                        context.setStatus(ProcessingStatus.FAILURE);
+                        break;
+                    }
+                    statCollector.incrementRemovedCopiesNumber();
+                }
+                if (ret) {
+                    for (int i = decryptedCopies.size() - 1; i > 0; i--) {
+                        decryptedCopies.remove(i);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Error during handling of multiple copies:" + e.getMessage());
+            context.setStatus(ProcessingStatus.FAILURE);
+            ret = false;
+        }
+        return ret;
     }
 
     private void setStopFlag() {
@@ -254,12 +314,15 @@ public class FileProcessor {
         System.out.println(statCollector.getMissingDecryptedFiles().size() + " files are not decrypted by DrWeb");
         System.out.println(statCollector.getNotReallyEncryptedFiles().size() + " files are not really encrypted");
         System.out.println(statCollector.getUnknownExtensionsFiles().size() + " files are of unknown type");
+        System.out.println(statCollector.getAdditionalCopiesNumber() + " decrypted files were decrypted several times");
+        System.out.println(statCollector.getRemovedCopiesNumber() + " copies of decrypted files were cleared");
         System.out.println("Unknown extensions: " + statCollector.getUnknownExtensions());
         System.out.println("======");
         System.out.println(statCollector.getSuccessfullyProcessedEntries().size() + " files were successfully processed");
         System.out.println(statCollector.getNotProcessedEntries().size() + " files were not processed");
         System.out.println(statCollector.getRejectedEntries().size() + " files were rejected");
         System.out.println(statCollector.getFailedEntries().size() + " files were failed");
+        System.out.println(statCollector.getStrangeFiles().size() + " files are strange");
     }
 
     private void postCollectStatistics() {

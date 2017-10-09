@@ -21,8 +21,14 @@ public class StatisticsCollector {
     private List<HelperContext> successfullyProcessedEntries;
     private List<HelperContext> rejectedEntries;
     private List<HelperContext> failedEntries;
+    private int additionalCopies;
+    private int removedCopies;
+
+    private List<HelperContext> strangeFileEntries;
 
     public StatisticsCollector() {
+        additionalCopies = 0;
+        removedCopies = 0;
         unknownExtensions = new TreeSet<>();
         missingEncryptedFiles = new ArrayList<>();
         missingDecryptedFiles = new ArrayList<>();
@@ -33,6 +39,8 @@ public class StatisticsCollector {
         successfullyProcessedEntries = new ArrayList<>();
         rejectedEntries = new ArrayList<>();
         failedEntries = new ArrayList<>();
+
+        strangeFileEntries = new ArrayList<>();
     }
 
     public void registerUnknownExtension(String extension, HelperContext context) {
@@ -102,5 +110,31 @@ public class StatisticsCollector {
 
     public List<HelperContext> getFailedEntries() {
         return failedEntries;
+    }
+
+    public void registerAdditionalCopies(int copiesNumber) {
+        if (copiesNumber > 0) {
+            additionalCopies += copiesNumber;
+        }
+    }
+
+    public int getAdditionalCopiesNumber() {
+        return additionalCopies;
+    }
+
+    public void incrementRemovedCopiesNumber() {
+        removedCopies++;
+    }
+
+    public int getRemovedCopiesNumber() {
+        return removedCopies;
+    }
+
+    public void registerStrangeFile(HelperContext context) {
+        strangeFileEntries.add(context);
+    }
+
+    public List<HelperContext> getStrangeFiles() {
+        return strangeFileEntries;
     }
 }
