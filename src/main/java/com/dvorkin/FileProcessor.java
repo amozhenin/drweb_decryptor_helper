@@ -270,6 +270,7 @@ public class FileProcessor {
                 break;
             case ARCHIVE1:
             case ARCHIVE2:
+            case ARCHIVE3:
                 commandArguments.add("\"C:\\Program Files\\7-Zip\\7zFM.exe\"");
                 break;
             case EXCEL1:
@@ -284,6 +285,7 @@ public class FileProcessor {
             case VIDEO1:
             case VIDEO2:
             case VIDEO3:
+            case VIDEO4:
             case AUDIO1:
                 commandArguments.add("\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"");
                 break;

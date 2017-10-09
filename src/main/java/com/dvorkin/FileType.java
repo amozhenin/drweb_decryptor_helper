@@ -12,6 +12,7 @@ public enum FileType {
     PDF("pdf"),
     ARCHIVE1("zip"),
     ARCHIVE2("rar"),
+    ARCHIVE3("7z"),
     XML("xml"),
     IMAGE1("jpg"),
     IMAGE2("jpeg"),
@@ -24,6 +25,7 @@ public enum FileType {
     VIDEO1("mp4"),
     VIDEO2("avi"),
     VIDEO3("mov"),
+    VIDEO4("wmv"),
     UNKNOWN("zzzzzz");
 
     FileType(String extension) {
