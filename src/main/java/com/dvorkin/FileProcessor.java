@@ -258,6 +258,10 @@ public class FileProcessor {
             case XML:
             case CSV:
             case SQL:
+            case LAYOUT:
+            case MSG:
+            case DXF:
+            case FBX:
                 commandArguments.add("\"C:\\Program Files\\Far2\\Far.exe\"");
                 commandArguments.add("/v");
                 break;
@@ -271,6 +275,7 @@ public class FileProcessor {
             case ARCHIVE1:
             case ARCHIVE2:
             case ARCHIVE3:
+            case ARCHIVE4:
                 commandArguments.add("\"C:\\Program Files\\7-Zip\\7zFM.exe\"");
                 break;
             case EXCEL1:
