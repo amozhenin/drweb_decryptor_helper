@@ -3,6 +3,7 @@ package com.dvorkin;
 import org.apache.commons.io.FileUtils;
 
 import javax.swing.JOptionPane;
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -82,7 +83,7 @@ public class FileProcessor {
             } else {
                 boolean singleDecryptedCopy = true;
                 if (context.getDecryptedFileList().size() > 1) {
-                  singleDecryptedCopy = handleMultipleDecryptions(context);
+                    singleDecryptedCopy = handleMultipleDecryptions(context);
                 }
                 if (singleDecryptedCopy) {
                     handleDecryption(context);
@@ -93,51 +94,82 @@ public class FileProcessor {
     }
 
     private void handleDecryption(HelperContext context) {
-        if (!ensureRealEncryption(context)) {
-            statCollector.registerNotRealEncryption(context);
-        } else {
-            if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
-                activateHumanCheck(context);
+        EncryptionStatus status = determineEncryptionStatus(context);
+        switch (status) {
+            case POTENTIAL_MIRACLE: //rare case
+                System.out.println("Potential miracle on " + context.getEncryptedFile().getAbsolutePath());
+            case OK:
+                handleOkDecrypted(context);
+                break;
+            case MIRACLE_DUPLICATE: //rare case
+                System.out.println("Miracle duplicate on " + context.getEncryptedFile().getAbsolutePath());
+            case OK_DUPLICATE:
+            case OK_DIFFERENT_FILE:
+                handleOkDuplicate(context);
+                break;
+            case LOGICAL_ERROR: //I believe it will never happen
+                System.out.println("Internal logic error. Stopping further processing");
+                setStopFlag();
+                context.setStatus(ProcessingStatus.REJECT);
+                break;
+            case DECRYPTION_ERROR: //TODO add handling
+                statCollector.registerDecryptionError(context);
+                break;
+            case NOT_ENCRYPTED:
+                handleNotEncrypted(context);
+                break;
+            case ENCRYPTION_ERROR: //should not happen
+                statCollector.registerEncryptionError(context);
+                break;
+            case PROVED_NO_RECOVERY:
+                statCollector.registerNoRecovery(context);
+                break;
 
-                String message = "You have just saw file \"" +
-                        context.getDecryptedFile().getAbsolutePath() +
-                        "\", is the content OK and it should be restored?";
-                int ret = JOptionPane.showConfirmDialog(null, message,
-                        "Restore the file?", JOptionPane.YES_NO_CANCEL_OPTION);
-                //0 means YES, 1 means NO, 2 means CANCEL, -1 means user closed the dialog
-                if (ret == 2 || ret == -1) {
-                    setStopFlag(); //eny attempt to close dialog without choosing means user wants to stop us
-                    context.setStatus(ProcessingStatus.REJECT);
-                } else if (ret == 1) {
-                    context.setStatus(ProcessingStatus.REJECT);
-                } else if (ret == 0) {
-                    boolean deleted = context.getEncryptedFile().delete();
+        }
+    }
+
+    private void handleOkDecrypted(HelperContext context) {
+        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+            activateHumanCheck(context.getFileType(), context.getDecryptedFile());
+
+            String message = "You have just saw decrypted file \"" +
+                    context.getDecryptedFile().getAbsolutePath() +
+                    "\", is the content OK and it should be restored?";
+            int ret = JOptionPane.showConfirmDialog(null, message,
+                    "Restore the file?", JOptionPane.YES_NO_CANCEL_OPTION);
+            //0 means YES, 1 means NO, 2 means CANCEL, -1 means user closed the dialog
+            if (ret == 2 || ret == -1) {
+                setStopFlag(); //eny attempt to close dialog without choosing means user wants to stop us
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 1) {
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 0) {
+                boolean deleted = context.getEncryptedFile().delete();
+                if (!deleted) {
+                    context.setStatus(ProcessingStatus.FAILURE);
+                } else {
+                    deleted = context.getCryptoFile().delete();
                     if (!deleted) {
                         context.setStatus(ProcessingStatus.FAILURE);
                     } else {
-                        deleted = context.getCryptoFile().delete();
-                        if (!deleted) {
+                        Path path = context.getDecryptedFile().toPath();
+                        DosFileAttributeView view = Files.getFileAttributeView(path, DosFileAttributeView.class);
+                        if (view == null) {
                             context.setStatus(ProcessingStatus.FAILURE);
                         } else {
-                            Path path = context.getDecryptedFile().toPath();
-                            DosFileAttributeView view = Files.getFileAttributeView(path, DosFileAttributeView.class);
-                            if (view == null) {
-                                context.setStatus(ProcessingStatus.FAILURE);
-                            } else {
-                                try {
-                                    view.setArchive(false);
-                                    view.setSystem(false);
-                                    view.setReadOnly(false);
-                                    view.setHidden(false);
-                                    boolean renamed = context.getDecryptedFile().renameTo(context.getEncryptedFile());
-                                    if (renamed) {
-                                        context.setStatus(ProcessingStatus.SUCCESS);
-                                    } else {
-                                        context.setStatus(ProcessingStatus.FAILURE);
-                                    }
-                                } catch (IOException e) {
+                            try {
+                                view.setArchive(false);
+                                view.setSystem(false);
+                                view.setReadOnly(false);
+                                view.setHidden(false);
+                                boolean renamed = context.getDecryptedFile().renameTo(context.getEncryptedFile());
+                                if (renamed) {
+                                    context.setStatus(ProcessingStatus.SUCCESS);
+                                } else {
                                     context.setStatus(ProcessingStatus.FAILURE);
                                 }
+                            } catch (IOException e) {
+                                context.setStatus(ProcessingStatus.FAILURE);
                             }
                         }
                     }
@@ -146,8 +178,80 @@ public class FileProcessor {
         }
     }
 
+    private void handleOkDuplicate(HelperContext context) {
+        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+            activateHumanCheck(context.getFileType(), context.getDecryptedFile());
+
+            String message = "You have just saw decrypted(copy) file \"" +
+                    context.getDecryptedFile().getAbsolutePath() +
+                    "\", is the content OK and it should be restored?";
+            int ret = JOptionPane.showConfirmDialog(null, message,
+                    "Restore the file?", JOptionPane.YES_NO_CANCEL_OPTION);
+            //0 means YES, 1 means NO, 2 means CANCEL, -1 means user closed the dialog
+            if (ret == 2 || ret == -1) {
+                setStopFlag(); //eny attempt to close dialog without choosing means user wants to stop us
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 1) {
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 0) {
+                boolean deleted = context.getCryptoFile().delete();
+                if (!deleted) {
+                    context.setStatus(ProcessingStatus.FAILURE);
+                } else {
+                    Path path = context.getDecryptedFile().toPath();
+                    DosFileAttributeView view = Files.getFileAttributeView(path, DosFileAttributeView.class);
+                    if (view == null) {
+                        context.setStatus(ProcessingStatus.FAILURE);
+                    } else {
+                        try {
+                            view.setArchive(false);
+                            view.setSystem(false);
+                            view.setReadOnly(false);
+                            view.setHidden(false);
+                            context.setStatus(ProcessingStatus.SUCCESS);
+                        } catch (IOException e) {
+                            context.setStatus(ProcessingStatus.FAILURE);
+                        }
+                    }
+                }
+
+            }
+        }
+    }
+
+    private void handleNotEncrypted(HelperContext context) {
+        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+            activateHumanCheck(context.getFileType(), context.getEncryptedFile());
+
+            String message = "You have just saw original file \"" +
+                    context.getEncryptedFile().getAbsolutePath() +
+                    "\", is the content OK and we leave it?";
+            int ret = JOptionPane.showConfirmDialog(null, message,
+                    "Leave the file?", JOptionPane.YES_NO_CANCEL_OPTION);
+            //0 means YES, 1 means NO, 2 means CANCEL, -1 means user closed the dialog
+            if (ret == 2 || ret == -1) {
+                setStopFlag(); //eny attempt to close dialog without choosing means user wants to stop us
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 1) {
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 0) {
+                boolean deleted = context.getCryptoFile().delete();
+                if (!deleted) {
+                    context.setStatus(ProcessingStatus.FAILURE);
+                } else {
+                    deleted = context.getDecryptedFile().delete();
+                    if (deleted) {
+                        context.setStatus(ProcessingStatus.SUCCESS);
+                    } else {
+                        context.setStatus(ProcessingStatus.FAILURE);
+                    }
+                }
+            }
+        }
+    }
+
     /**
-     *  Method handles only multiple copies, leaving just single copy
+     * Method handles only multiple copies, leaving just single copy
      */
     private boolean handleMultipleDecryptions(HelperContext context) {
         List<File> decryptedCopies = context.getDecryptedFileList();
@@ -195,29 +299,134 @@ public class FileProcessor {
         return stopFlag;
     }
 
-    private boolean ensureRealEncryption(HelperContext context) {
-        boolean ret = false;
+    private EncryptionStatus determineEncryptionStatus(HelperContext context) {
         long origSize = context.getEncryptedFile().length();
         long decriptedSize = context.getDecryptedFile().length();
         long cryptoSize = context.getCryptoFile().length();
-        if (origSize > Constants.MINIMUM_ENCRYPTED_FILE_SIZE) {
-            if (origSize != decriptedSize) {
-                return ret;
-            }
-            ret = ensureEncryption(context.getEncryptedFile());
-        } else if (origSize < Constants.MINIMUM_ENCRYPTED_FILE_SIZE) {
-            return ret;
+        boolean sourceEncrypted;
+        boolean largeSource = false;
+        if (origSize < Constants.MINIMUM_ENCRYPTED_FILE_SIZE) {
+            sourceEncrypted = false;
         } else {
-            if (decriptedSize >= cryptoSize) {
-                return ret;
-            }
-            ret = ensureEncryption(context.getEncryptedFile());
+            sourceEncrypted = ensureEncryption(context.getEncryptedFile());
+            largeSource = (origSize > Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE);
         }
-        return ret;
+        boolean noRecoveryPossible = (cryptoSize == 0);
+        boolean sourceSizeMatch = origSize == decriptedSize;
+        boolean cryptoSizeMatch = cryptoSize == decriptedSize;
+        boolean maxCryptoSize = cryptoSize == Constants.MAXIMUM_CRYPTO_FILE_SIZE;
+        if (sourceEncrypted) {
+            if (noRecoveryPossible) {
+                if (largeSource) {
+                    if (sourceSizeMatch) {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.LOGICAL_ERROR;
+                        } else {
+                            return EncryptionStatus.POTENTIAL_MIRACLE;
+                        }
+                    } else {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.DECRYPTION_ERROR;
+                        } else {
+                            if (origSize - decriptedSize != Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
+                                return EncryptionStatus.DECRYPTION_ERROR;
+                            }
+                            if (ensureEndMatches(context.getEncryptedFile(), context.getDecryptedFile())) {
+                                return EncryptionStatus.PROVED_NO_RECOVERY;
+                            } else {
+                                return EncryptionStatus.DECRYPTION_ERROR;
+                            }
+                        }
+                    }
+                } else {
+                    if (sourceSizeMatch) {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.LOGICAL_ERROR;
+                        } else {
+                            return EncryptionStatus.POTENTIAL_MIRACLE;
+                        }
+                    } else {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.PROVED_NO_RECOVERY;
+                        } else {
+                            return EncryptionStatus.DECRYPTION_ERROR;
+                        }
+                    }
+                }
+            } else {
+                if (largeSource && !maxCryptoSize) {
+                    return EncryptionStatus.ENCRYPTION_ERROR;
+                }
+                if (sourceSizeMatch) {
+                    if (cryptoSizeMatch) {
+                        return EncryptionStatus.LOGICAL_ERROR;
+                    } else {
+                        return EncryptionStatus.OK;
+                    }
+                } else {
+                    return EncryptionStatus.DECRYPTION_ERROR;
+                }
+
+            }
+        } else {
+            if (noRecoveryPossible) {
+                if (largeSource) {
+                    if (sourceSizeMatch) {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.LOGICAL_ERROR;
+                        } else {
+                            return EncryptionStatus.MIRACLE_DUPLICATE;
+                        }
+                    } else {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.DECRYPTION_ERROR;
+                        } else {
+                            if (origSize - decriptedSize != Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
+                                return EncryptionStatus.DECRYPTION_ERROR;
+                            }
+                            if (ensureEndMatches(context.getEncryptedFile(), context.getDecryptedFile())) {
+                                return EncryptionStatus.NOT_ENCRYPTED;
+                            } else {
+                                return EncryptionStatus.DECRYPTION_ERROR;
+                            }
+                            //TODO check that size follow rule
+                            //check that end of files match
+                            //return EncryptionStatus.NOT_ENCRYPTED
+                        }
+                    }
+                } else {
+                    if (sourceSizeMatch) {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.LOGICAL_ERROR;
+                        } else {
+                            return EncryptionStatus.MIRACLE_DUPLICATE;
+                        }
+                    } else {
+                        if (cryptoSizeMatch) {
+                            return EncryptionStatus.NOT_ENCRYPTED;
+                        } else {
+                            return EncryptionStatus.DECRYPTION_ERROR;
+                        }
+                    }
+                }
+            } else {
+                if (largeSource && !maxCryptoSize) {
+                    return EncryptionStatus.ENCRYPTION_ERROR;
+                }
+                if (sourceSizeMatch) {
+                    if (cryptoSizeMatch) {
+                        return EncryptionStatus.LOGICAL_ERROR;
+                    } else {
+                        return EncryptionStatus.OK_DUPLICATE;
+                    }
+                } else {
+                    return EncryptionStatus.OK_DIFFERENT_FILE;
+                }
+            }
+        }
     }
 
     private boolean ensureEncryption(File file) {
-        boolean ret = false;
         int totalBytesRead = 0;
         try (FileInputStream in = new FileInputStream(file)) {
             byte[] buffer = new byte[4096];
@@ -227,14 +436,13 @@ public class FileProcessor {
                 for (int i = 0; i < bytesRead; i++) {
                     if (totalBytesRead + i < Constants.ENCRYPTED_FILE_CONTENTS_START.length) {
                         if (buffer[i] != Constants.ENCRYPTED_FILE_CONTENTS_START[totalBytesRead + i]) {
-                            return ret;
+                            return false;
                         }
                     } else if (totalBytesRead + i >= Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
-                        ret = true;
-                        return ret;
+                        return true;
                     } else {
                         if (buffer[i] != 0) {
-                            return ret;
+                            return false;
                         }
                     }
                 }
@@ -244,15 +452,49 @@ public class FileProcessor {
             }
 
         } catch (IOException e) {
-            return ret;
+            return false;
         }
-        ret = true;
-        return ret;
+        return true;
     }
 
-    private void activateHumanCheck(HelperContext context) {
+    private boolean ensureEndMatches(File original, File decrypted) {
+        if (original.length() < Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
+            return false;
+        }
+        try (BufferedInputStream origStream = new BufferedInputStream(new FileInputStream(original));
+             BufferedInputStream decrStream = new BufferedInputStream(new FileInputStream(decrypted))) {
+            long rest = Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE;
+            while (rest > 0) {
+                long skipped = origStream.skip(rest);
+                rest -= skipped;
+            }
+            while (true) {
+                int b1 = origStream.read();
+                int b2 = decrStream.read();
+                if (b1 == -1) {
+                    if (b2 == -1) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    if (b2 == -1) {
+                        return false;
+                    } else {
+                        if (b2 != b1) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            return false;
+        }
+    }
+
+    private void activateHumanCheck(FileType type, File file) {
         List<String> commandArguments = new ArrayList<>(3);
-        switch (context.getFileType()) {
+        switch (type) {
             case EMPTY:
             case TEXT:
             case XML:
@@ -299,7 +541,7 @@ public class FileProcessor {
             default:
                 throw new RuntimeException("Unknown type should not present");
         }
-        commandArguments.add(context.getDecryptedFile().getAbsolutePath());
+        commandArguments.add(file.getAbsolutePath());
         ProcessBuilder pb = new ProcessBuilder(commandArguments);
         pb = pb.inheritIO();
         try {
@@ -319,8 +561,10 @@ public class FileProcessor {
         System.out.println("Total: " + data.size() + " files");
         System.out.println(statCollector.getMissingEncryptedFiles().size() + " original files are misssing");
         System.out.println(statCollector.getMissingDecryptedFiles().size() + " files are not decrypted by DrWeb");
-        System.out.println(statCollector.getNotReallyEncryptedFiles().size() + " files are not really encrypted");
+        System.out.println(statCollector.getEncryptionErrorFiles().size() + " files are with encryption errors");
+        System.out.println(statCollector.getDecryptionErrorFiles().size() + " files are with decryption errors");
         System.out.println(statCollector.getUnknownExtensionsFiles().size() + " files are of unknown type");
+        System.out.println(statCollector.getNoRecoveryFiles().size() + " files are cannot be restored");
         System.out.println(statCollector.getAdditionalCopiesNumber() + " decrypted files were decrypted several times");
         System.out.println(statCollector.getRemovedCopiesNumber() + " copies of decrypted files were cleared");
         System.out.println("Unknown extensions: " + statCollector.getUnknownExtensions());
@@ -334,7 +578,7 @@ public class FileProcessor {
 
     private void postCollectStatistics() {
         data.forEach(context -> {
-            switch(context.getStatus()) {
+            switch (context.getStatus()) {
                 case NOT_PROCESSED:
                     statCollector.registerNotProcessedEntry(context);
                     break;

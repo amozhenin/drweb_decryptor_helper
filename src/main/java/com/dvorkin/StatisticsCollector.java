@@ -15,7 +15,9 @@ public class StatisticsCollector {
     private List<HelperContext> missingEncryptedFiles;
     private List<HelperContext> missingDecryptedFiles;
     private List<HelperContext> unknownExtensionsFiles;
-    private List<HelperContext> notRealEncryptionFiles;
+    private List<HelperContext> encryptionErrorFiles;
+    private List<HelperContext> decryptionErrorFiles;
+    private List<HelperContext> noRecoveryFiles;
 
     private List<HelperContext> notProcessedEntries;
     private List<HelperContext> successfullyProcessedEntries;
@@ -33,7 +35,9 @@ public class StatisticsCollector {
         missingEncryptedFiles = new ArrayList<>();
         missingDecryptedFiles = new ArrayList<>();
         unknownExtensionsFiles = new ArrayList<>();
-        notRealEncryptionFiles = new ArrayList<>();
+        encryptionErrorFiles = new ArrayList<>();
+        decryptionErrorFiles = new ArrayList<>();
+        noRecoveryFiles = new ArrayList<>();
 
         notProcessedEntries = new ArrayList<>();
         successfullyProcessedEntries = new ArrayList<>();
@@ -56,8 +60,16 @@ public class StatisticsCollector {
         missingDecryptedFiles.add(context);
     }
 
-    public void registerNotRealEncryption(HelperContext context){
-        notRealEncryptionFiles.add(context);
+    public void registerEncryptionError(HelperContext context){
+        encryptionErrorFiles.add(context);
+    }
+
+    public void registerDecryptionError(HelperContext context){
+        decryptionErrorFiles.add(context);
+    }
+
+    public void registerNoRecovery(HelperContext context){
+        noRecoveryFiles.add(context);
     }
 
     public Set<String> getUnknownExtensions() {
@@ -72,8 +84,16 @@ public class StatisticsCollector {
         return missingDecryptedFiles;
     }
 
-    public List<HelperContext> getNotReallyEncryptedFiles() {
-        return notRealEncryptionFiles;
+    public List<HelperContext> getEncryptionErrorFiles() {
+        return encryptionErrorFiles;
+    }
+
+    public List<HelperContext> getDecryptionErrorFiles() {
+        return decryptionErrorFiles;
+    }
+
+    public List<HelperContext> getNoRecoveryFiles() {
+        return noRecoveryFiles;
     }
 
     public List<HelperContext> getUnknownExtensionsFiles() {
