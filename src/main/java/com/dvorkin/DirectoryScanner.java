@@ -28,13 +28,6 @@ public class DirectoryScanner {
         File[] children = dir.listFiles();
         if (children == null) {
             System.out.println("Something strange in " + dir.getAbsolutePath() + ", skipping its processing");
-            try {
-                BasicFileAttributes attrs = Files.readAttributes(dir.toPath(), BasicFileAttributes.class);
-                System.out.println("canRead: " + dir.canRead() + ", isLink: " + attrs.isSymbolicLink() + ", isOther: "
-                        + attrs.isOther() + ", isRegularFile: " + attrs.isRegularFile());
-            } catch (IOException e) {
-                System.out.println("Error retrieving info about strange object:" + e.getMessage());
-            }
             return ret;
         }
         for (File child : children) {
