@@ -104,8 +104,10 @@ public class FileProcessor {
             case MIRACLE_DUPLICATE: //rare case
                 System.out.println("Miracle duplicate on " + context.getEncryptedFile().getAbsolutePath());
             case OK_DUPLICATE:
-            case OK_DIFFERENT_FILE:
                 handleOkDuplicate(context);
+                break;
+            case OK_DIFFERENT_FILE:
+                handleOkDifferentFile(context);
                 break;
             case LOGICAL_ERROR: //I believe it will never happen
                 System.out.println("Internal logic error. Stopping further processing");
@@ -183,6 +185,56 @@ public class FileProcessor {
             activateHumanCheck(context.getFileType(), context.getDecryptedFile());
 
             String message = "You have just saw decrypted(copy) file \"" +
+                    context.getDecryptedFile().getAbsolutePath() +
+                    "\", is the content OK and it should be restored?";
+            int ret = JOptionPane.showConfirmDialog(null, message,
+                    "Restore the file?", JOptionPane.YES_NO_CANCEL_OPTION);
+            //0 means YES, 1 means NO, 2 means CANCEL, -1 means user closed the dialog
+            if (ret == 2 || ret == -1) {
+                setStopFlag(); //eny attempt to close dialog without choosing means user wants to stop us
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 1) {
+                context.setStatus(ProcessingStatus.REJECT);
+            } else if (ret == 0) {
+                boolean deleted = context.getCryptoFile().delete();
+                if (!deleted) {
+                    context.setStatus(ProcessingStatus.FAILURE);
+                } else {
+                    try {
+                        if (FileUtils.contentEquals(context.getEncryptedFile(), context.getDecryptedFile())) {
+                            deleted = context.getDecryptedFile().delete();
+                            if (!deleted) {
+                                context.setStatus(ProcessingStatus.FAILURE);
+                            } else {
+                                context.setStatus(ProcessingStatus.SUCCESS);
+                            }
+                        } else {
+                            Path path = context.getDecryptedFile().toPath();
+                            DosFileAttributeView view = Files.getFileAttributeView(path, DosFileAttributeView.class);
+                            if (view == null) {
+                                context.setStatus(ProcessingStatus.FAILURE);
+                            } else {
+                                view.setArchive(false);
+                                view.setSystem(false);
+                                view.setReadOnly(false);
+                                view.setHidden(false);
+                                context.setStatus(ProcessingStatus.SUCCESS);
+                            }
+                        }
+                    } catch (IOException e) {
+                        context.setStatus(ProcessingStatus.FAILURE);
+                    }
+                }
+
+            }
+        }
+    }
+
+    private void handleOkDifferentFile(HelperContext context) {
+        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+            activateHumanCheck(context.getFileType(), context.getDecryptedFile());
+
+            String message = "You have just saw decrypted(different) file \"" +
                     context.getDecryptedFile().getAbsolutePath() +
                     "\", is the content OK and it should be restored?";
             int ret = JOptionPane.showConfirmDialog(null, message,
@@ -389,9 +441,6 @@ public class FileProcessor {
                             } else {
                                 return EncryptionStatus.DECRYPTION_ERROR;
                             }
-                            //TODO check that size follow rule
-                            //check that end of files match
-                            //return EncryptionStatus.NOT_ENCRYPTED
                         }
                     }
                 } else {

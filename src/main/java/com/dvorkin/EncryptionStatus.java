@@ -13,6 +13,6 @@ public enum EncryptionStatus
     OK, //everything seem ok
     MIRACLE_DUPLICATE, //potentially duplicates file. No restore needed
     NOT_ENCRYPTED, //File was not encrypted at all
-    OK_DUPLICATE, //ok but do not delete original
+    OK_DUPLICATE, //ok but do not delete original, remove duplicate if it is really duplicate
     OK_DIFFERENT_FILE //ok but do not delete original
 }
