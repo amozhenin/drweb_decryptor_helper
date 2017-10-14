@@ -8,6 +8,7 @@ public enum EncryptionStatus
     LOGICAL_ERROR, //impossible combination, should never appear
     POTENTIAL_MIRACLE, //should not happen, but potentially indicates all is OK. A miracle happen?
     DECRYPTION_ERROR, //indicates that decryption went wrong
+    DECRYPTION_ERROR_NOT_ENCRYPTED, //same as above, but do not remove original
     PROVED_NO_RECOVERY, //File is encrypted and no recovery exists
     ENCRYPTION_ERROR, //encryption went wrong
     OK, //everything seem ok

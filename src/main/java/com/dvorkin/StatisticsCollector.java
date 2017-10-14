@@ -16,7 +16,7 @@ public class StatisticsCollector {
     private List<HelperContext> missingDecryptedFiles;
     private List<HelperContext> unknownExtensionsFiles;
     private List<HelperContext> encryptionErrorFiles;
-    private List<HelperContext> decryptionErrorFiles;
+    private List<HelperContext> unknownDecryptionErrorFiles;
     private List<HelperContext> noRecoveryFiles;
 
     private List<HelperContext> notProcessedEntries;
@@ -36,7 +36,7 @@ public class StatisticsCollector {
         missingDecryptedFiles = new ArrayList<>();
         unknownExtensionsFiles = new ArrayList<>();
         encryptionErrorFiles = new ArrayList<>();
-        decryptionErrorFiles = new ArrayList<>();
+        unknownDecryptionErrorFiles = new ArrayList<>();
         noRecoveryFiles = new ArrayList<>();
 
         notProcessedEntries = new ArrayList<>();
@@ -64,8 +64,8 @@ public class StatisticsCollector {
         encryptionErrorFiles.add(context);
     }
 
-    public void registerDecryptionError(HelperContext context){
-        decryptionErrorFiles.add(context);
+    public void registerUnknownDecryptionError(HelperContext context){
+        unknownDecryptionErrorFiles.add(context);
     }
 
     public void registerNoRecovery(HelperContext context){
@@ -88,8 +88,8 @@ public class StatisticsCollector {
         return encryptionErrorFiles;
     }
 
-    public List<HelperContext> getDecryptionErrorFiles() {
-        return decryptionErrorFiles;
+    public List<HelperContext> getUnknownDecryptionErrorFiles() {
+        return unknownDecryptionErrorFiles;
     }
 
     public List<HelperContext> getNoRecoveryFiles() {

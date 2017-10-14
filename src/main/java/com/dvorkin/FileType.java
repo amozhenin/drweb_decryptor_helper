@@ -18,19 +18,21 @@ public enum FileType {
     ARCHIVE2("rar"),
     ARCHIVE3("7z"),
     ARCHIVE4("iso"),
+    ARCHIVE5("swf"),
     XML("xml"),
     IMAGE1("jpg"),
     IMAGE2("jpeg"),
     EXCEL1("xls"),
     EXCEL2("xlsx"),
 //    WORD1("doc"),
-//    WORD2("docx"),
+    WORD2("docx"),
     WORD3("rtf"),
     AUDIO1("mp3"),
     VIDEO1("mp4"),
     VIDEO2("avi"),
     VIDEO3("mov"),
     VIDEO4("wmv"),
+    SVG("svg"),
     UNKNOWN("zzzzzz");
 
     FileType(String extension) {
