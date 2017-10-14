@@ -1,5 +1,6 @@
 package com.dvorkin;
 
+import com.dvorkin.json.Settings;
 import org.apache.commons.io.FileUtils;
 
 import javax.swing.JOptionPane;
@@ -21,9 +22,10 @@ public class FileProcessor {
     private List<HelperContext> data;
     private StatisticsCollector statCollector;
     private boolean stopFlag;
+    private Settings settings;
 
-
-    public FileProcessor(List<File> cryptoFiles) {
+    public FileProcessor(Settings settings, List<File> cryptoFiles) {
+        this.settings = settings;
         data = new ArrayList<>(cryptoFiles.size());
         statCollector = new StatisticsCollector();
         stopFlag = false;
@@ -33,7 +35,7 @@ public class FileProcessor {
             data.add(context);
             context.setCryptoFile(cryptoFile);
             String fileName = cryptoFile.getName().toUpperCase();
-            int cryptoExtensionIndex = fileName.lastIndexOf(Constants.ENCRYPTED_FILE_EXTENSION);
+            int cryptoExtensionIndex = fileName.lastIndexOf(settings.getEncryptedFileExtension());
             if (cryptoExtensionIndex == -1) {
                 throw new RuntimeException("Impossible! File that just matched the criteria now fails it");
             }
@@ -588,16 +590,16 @@ public class FileProcessor {
         long cryptoSize = context.getCryptoFile().length();
         boolean sourceEncrypted;
         boolean largeSource = false;
-        if (origSize < Constants.MINIMUM_ENCRYPTED_FILE_SIZE) {
+        if (origSize < settings.getMinimumEncryptedFileSize()) {
             sourceEncrypted = false;
         } else {
             sourceEncrypted = ensureEncryption(context.getEncryptedFile());
-            largeSource = (origSize > Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE);
+            largeSource = (origSize > settings.getMaximumReallyEncryptedFilePartSize());
         }
         boolean noRecoveryPossible = (cryptoSize == 0);
         boolean sourceSizeMatch = origSize == decriptedSize;
         boolean cryptoSizeMatch = cryptoSize == decriptedSize;
-        boolean maxCryptoSize = cryptoSize == Constants.MAXIMUM_CRYPTO_FILE_SIZE;
+        boolean maxCryptoSize = cryptoSize == settings.getMaximumCryptoFileSize();
         if (sourceEncrypted) {
             if (noRecoveryPossible) {
                 if (largeSource) {
@@ -611,7 +613,7 @@ public class FileProcessor {
                         if (cryptoSizeMatch) {
                             return EncryptionStatus.DECRYPTION_ERROR;
                         } else {
-                            if (origSize - decriptedSize != Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
+                            if (origSize - decriptedSize != settings.getMaximumReallyEncryptedFilePartSize()) {
                                 return EncryptionStatus.DECRYPTION_ERROR;
                             }
                             if (ensureEndMatches(context.getEncryptedFile(), context.getDecryptedFile())) {
@@ -664,7 +666,7 @@ public class FileProcessor {
                         if (cryptoSizeMatch) {
                             return EncryptionStatus.DECRYPTION_ERROR_NOT_ENCRYPTED;
                         } else {
-                            if (origSize - decriptedSize != Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
+                            if (origSize - decriptedSize != settings.getMaximumReallyEncryptedFilePartSize()) {
                                 return EncryptionStatus.DECRYPTION_ERROR_NOT_ENCRYPTED;
                             }
                             if (ensureEndMatches(context.getEncryptedFile(), context.getDecryptedFile())) {
@@ -714,11 +716,11 @@ public class FileProcessor {
             while (bytesRead >= 0) {
                 bytesRead = in.read(buffer);
                 for (int i = 0; i < bytesRead; i++) {
-                    if (totalBytesRead + i < Constants.ENCRYPTED_FILE_CONTENTS_START.length) {
-                        if (buffer[i] != Constants.ENCRYPTED_FILE_CONTENTS_START[totalBytesRead + i]) {
+                    if (totalBytesRead + i < settings.getMinimumEncryptedFileSize()) {
+                        if (buffer[i] != settings.getEncryptedFileContentsStart()[totalBytesRead + i]) {
                             return false;
                         }
-                    } else if (totalBytesRead + i >= Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
+                    } else if (totalBytesRead + i >= settings.getMaximumReallyEncryptedFilePartSize()) {
                         return true;
                     } else {
                         if (buffer[i] != 0) {
@@ -738,12 +740,12 @@ public class FileProcessor {
     }
 
     private boolean ensureEndMatches(File original, File decrypted) {
-        if (original.length() < Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE) {
+        if (original.length() < settings.getMaximumReallyEncryptedFilePartSize()) {
             return false;
         }
         try (BufferedInputStream origStream = new BufferedInputStream(new FileInputStream(original));
              BufferedInputStream decrStream = new BufferedInputStream(new FileInputStream(decrypted))) {
-            long rest = Constants.MAXIMUM_REALLY_ENCRYPTED_FILE_PART_SIZE;
+            long rest = settings.getMaximumReallyEncryptedFilePartSize();
             while (rest > 0) {
                 long skipped = origStream.skip(rest);
                 rest -= skipped;

@@ -1,9 +1,8 @@
 package com.dvorkin;
 
+import com.dvorkin.json.Settings;
+
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +10,12 @@ import java.util.List;
  * Created by dvorkin on 30.09.2017.
  */
 public class DirectoryScanner {
+
+    private Settings settings;
+
+    public DirectoryScanner(Settings settings) {
+        this.settings = settings;
+    }
 
     public List<File> scanDirectory(File scanRoot) {
         List<File> result = new ArrayList<>();
@@ -33,7 +38,7 @@ public class DirectoryScanner {
         for (File child : children) {
             if (child.isDirectory()) {
                 ret.addAll(recursivelyScan(child));
-            } else if (child.getName().toUpperCase().endsWith(Constants.ENCRYPTED_FILE_EXTENSION)) {
+            } else if (child.getName().toUpperCase().endsWith(settings.getEncryptedFileExtension())) {
                 ret.add(child);
             }
         }
