@@ -20,7 +20,7 @@ public class HelperContext {
     //This is the file created by the virus. We are searching for them
     private File cryptoFile;
 
-    private FileType fileType;
+    private String extension;
     private ProcessingStatus status;
 
     public HelperContext() {
@@ -60,12 +60,12 @@ public class HelperContext {
         this.cryptoFile = cryptoFile;
     }
 
-    public FileType getFileType() {
-        return fileType;
+    public String getExtension() {
+        return extension;
     }
 
-    public void setFileType(FileType fileType) {
-        this.fileType = fileType;
+    public void setExtension(String extension) {
+        this.extension = extension;
     }
 
     public ProcessingStatus getStatus() {

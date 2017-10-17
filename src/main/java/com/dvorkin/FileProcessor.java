@@ -1,5 +1,6 @@
 package com.dvorkin;
 
+import com.dvorkin.json.ExtensionCommand;
 import com.dvorkin.json.Settings;
 import org.apache.commons.io.FileUtils;
 
@@ -68,9 +69,8 @@ public class FileProcessor {
                 }
             }
             statCollector.registerAdditionalCopies(context.getDecryptedFileList().size() - 1);
-            FileType fileType = FileType.getByExtension(extension);
-            context.setFileType(fileType);
-            if (FileType.UNKNOWN == fileType) {
+            context.setExtension(extension);
+            if (settings.getExtensionCommand(extension) == null) {
                 statCollector.registerUnknownExtension(extension, context);
             }
         });
@@ -136,10 +136,11 @@ public class FileProcessor {
     }
 
     private void handleDecryptionErrorNotEncrypted(HelperContext context) {
-        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+        ExtensionCommand command = settings.getExtensionCommand(context.getExtension());
+        if ((command != null) && !isStopFlagSet()) {
             if (isKnownDecryptionBug(context)) {
                 if (prepareCleanDecryption(context)) {
-                    activateHumanCheck(context.getFileType(), context.getDecryptedFileList().get(1));
+                    activateHumanCheck(command, context.getDecryptedFileList().get(1));
 
                     String message = "You have just saw decrypted (and fixed)(copy) file \"" +
                             context.getDecryptedFileList().get(1).getAbsolutePath() +
@@ -190,10 +191,11 @@ public class FileProcessor {
     }
 
     private void handleDecryptionError(HelperContext context) {
-        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+        ExtensionCommand command = settings.getExtensionCommand(context.getExtension());
+        if ((command != null) && !isStopFlagSet()) {
             if (isKnownDecryptionBug(context)) {
                 if (prepareCleanDecryption(context)) {
-                    activateHumanCheck(context.getFileType(), context.getDecryptedFileList().get(1));
+                    activateHumanCheck(command, context.getDecryptedFileList().get(1));
 
                     String message = "You have just saw decrypted (and fixed) file \"" +
                             context.getDecryptedFileList().get(1).getAbsolutePath() +
@@ -315,8 +317,9 @@ public class FileProcessor {
     }
 
     private void handleOkDecrypted(HelperContext context) {
-        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
-            activateHumanCheck(context.getFileType(), context.getDecryptedFile());
+        ExtensionCommand command = settings.getExtensionCommand(context.getExtension());
+        if ((command != null) && !isStopFlagSet()) {
+            activateHumanCheck(command, context.getDecryptedFile());
 
             String message = "You have just saw decrypted file \"" +
                     context.getDecryptedFile().getAbsolutePath() +
@@ -365,8 +368,9 @@ public class FileProcessor {
     }
 
     private void handleOkDuplicate(HelperContext context) {
-        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
-            activateHumanCheck(context.getFileType(), context.getDecryptedFile());
+        ExtensionCommand command = settings.getExtensionCommand(context.getExtension());
+        if ((command != null) && !isStopFlagSet()) {
+            activateHumanCheck(command, context.getDecryptedFile());
 
             String message = "You have just saw decrypted(copy) file \"" +
                     context.getDecryptedFile().getAbsolutePath() +
@@ -415,10 +419,11 @@ public class FileProcessor {
     }
 
     private void handleOkDifferentFile(HelperContext context) {
-        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
+        ExtensionCommand command = settings.getExtensionCommand(context.getExtension());
+        if ((command != null) && !isStopFlagSet()) {
             if (isKnownDecryptionBug(context)) {
                 if (prepareCleanDecryption(context)) {
-                    activateHumanCheck(context.getFileType(), context.getDecryptedFileList().get(1));
+                    activateHumanCheck(command, context.getDecryptedFileList().get(1));
 
                     String message = "You have just saw decrypted (and fixed) file \"" +
                             context.getDecryptedFileList().get(1).getAbsolutePath() +
@@ -463,7 +468,7 @@ public class FileProcessor {
                     context.setStatus(ProcessingStatus.FAILURE);
                 }
             } else {
-                activateHumanCheck(context.getFileType(), context.getDecryptedFile());
+                activateHumanCheck(command, context.getDecryptedFile());
 
                 String message = "You have just saw decrypted(different) file \"" +
                         context.getDecryptedFile().getAbsolutePath() +
@@ -505,8 +510,9 @@ public class FileProcessor {
     }
 
     private void handleNotEncrypted(HelperContext context) {
-        if ((context.getFileType() != FileType.UNKNOWN) && !isStopFlagSet()) {
-            activateHumanCheck(context.getFileType(), context.getEncryptedFile());
+        ExtensionCommand command = settings.getExtensionCommand(context.getExtension());
+        if ((command != null) && !isStopFlagSet()) {
+            activateHumanCheck(command, context.getEncryptedFile());
 
             String message = "You have just saw original file \"" +
                     context.getEncryptedFile().getAbsolutePath() +
@@ -770,56 +776,15 @@ public class FileProcessor {
         }
     }
 
-    private void activateHumanCheck(FileType type, File file) {
+    private void activateHumanCheck(ExtensionCommand command, File file) {
         List<String> commandArguments = new ArrayList<>(3);
-        switch (type) {
-            case EMPTY:
-            case TEXT:
-            case XML:
-            case CSV:
-            case SQL:
-            case LAYOUT:
-            case MSG:
-            case DXF:
-            case FBX:
-            case SVG:
-                commandArguments.add("\"C:\\Program Files\\Far2\\Far.exe\"");
-                commandArguments.add("/v");
-                break;
-            case PDF:
-                commandArguments.add("\"C:\\Program Files (x86)\\Adobe\\Reader 10.0\\Reader\\AcroRd32.exe\"");
-                break;
-            case IMAGE1:
-            case IMAGE2:
-                commandArguments.add("C:\\Windows\\System32\\mspaint.exe");
-                break;
-            case ARCHIVE1:
-            case ARCHIVE2:
-            case ARCHIVE3:
-            case ARCHIVE4:
-            case ARCHIVE5:
-                commandArguments.add("\"C:\\Program Files\\7-Zip\\7zFM.exe\"");
-                break;
-            case EXCEL1:
-            case EXCEL2:
-                commandArguments.add("\"C:\\Program Files\\Microsoft Office\\Office14\\EXCEL.EXE\"");
-                break;
-//            case WORD1:
-            case WORD2:
-            case WORD3:
-                commandArguments.add("\"C:\\Program Files\\Microsoft Office\\Office14\\WINWORD.EXE\"");
-                break;
-            case VIDEO1:
-            case VIDEO2:
-            case VIDEO3:
-            case VIDEO4:
-            case AUDIO1:
-                commandArguments.add("\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"");
-                break;
-            case UNKNOWN:
-                throw new RuntimeException("Unknown type should not present");
-            default:
-                throw new RuntimeException("Unknown type should not present");
+        if (command != null) {
+            commandArguments.add(command.getCommand());
+            for (String option : command.getOptions()) {
+                commandArguments.add(option);
+            }
+        } else {
+            throw new RuntimeException("Could not process unknown file type");
         }
         commandArguments.add(file.getAbsolutePath());
         ProcessBuilder pb = new ProcessBuilder(commandArguments);

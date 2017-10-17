@@ -4,7 +4,38 @@
   "maximum_really_encrypted_file_part_size": 2972987,
   "maximum_crypto_file_size": 2972996,
   "extension_commands": {
-    "": {"command":"", "options":[""]},
-    "": {"command":"", "options":[""]},
+    "": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "txt": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "csv": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "sql": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "layout": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "msg": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "dxf": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "fbx": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "svg": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+    "xml": {"command":"\"C:\\Program Files\\Far2\\Far.exe\"", "options":["/v"]},
+
+    "pdf": {"command":"\"C:\\Program Files (x86)\\Adobe\\Reader 10.0\\Reader\\AcroRd32.exe\"", "options":[]},
+
+    "zip": {"command":"\"C:\\Program Files\\7-Zip\\7zFM.exe\"", "options":[]},
+    "rar": {"command":"\"C:\\Program Files\\7-Zip\\7zFM.exe\"", "options":[]},
+    "7z": {"command":"\"C:\\Program Files\\7-Zip\\7zFM.exe\"", "options":[]},
+    "iso": {"command":"\"C:\\Program Files\\7-Zip\\7zFM.exe\"", "options":[]},
+    "swf": {"command":"\"C:\\Program Files\\7-Zip\\7zFM.exe\"", "options":[]},
+
+    "jpg": {"command":"C:\\Windows\\System32\\mspaint.exe", "options":[]},
+    "jpeg": {"command":"C:\\Windows\\System32\\mspaint.exe", "options":[]},
+
+    "xls": {"command":"\"C:\\Program Files\\Microsoft Office\\Office14\\EXCEL.EXE\"", "options":[]},
+    "xlsx": {"command":"\"C:\\Program Files\\Microsoft Office\\Office14\\EXCEL.EXE\"", "options":[]},
+
+    "docx": {"command":"\"C:\\Program Files\\Microsoft Office\\Office14\\WINWORD.EXE\"", "options":[]},
+    "rtf": {"command":"\"C:\\Program Files\\Microsoft Office\\Office14\\WINWORD.EXE\"", "options":[]},
+
+    "mp3": {"command":"\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"", "options":[]},
+    "mp4": {"command":"\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"", "options":[]},
+    "avi": {"command":"\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"", "options":[]},
+    "mov": {"command":"\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"", "options":[]},
+    "wmv": {"command":"\"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe\"", "options":[]}
   }
 }
