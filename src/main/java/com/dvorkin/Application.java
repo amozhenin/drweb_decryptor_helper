@@ -40,7 +40,7 @@ public class Application {
         if (file.exists()) {
             ret = mapper.readValue(file, Settings.class);
         } else {
-            InputStream in = file.getClass().getClassLoader().getResourceAsStream("settings.json");
+            InputStream in = Thread.currentThread().getContextClassLoader().getResourceAsStream("settings.json");
             ret = mapper.readValue(in, Settings.class);
         }
         return ret;
