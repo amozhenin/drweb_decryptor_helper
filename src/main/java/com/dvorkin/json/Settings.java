@@ -54,6 +54,6 @@ public class Settings {
     }
 
     public ExtensionCommand getExtensionCommand(String extension) {
-        return extensionCommands.get(extension);
+        return extensionCommands.get(extension.toLowerCase());
     }
 }
