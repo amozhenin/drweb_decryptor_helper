@@ -259,7 +259,7 @@ public class FileProcessor {
         try {
             byte[] content = FileUtils.readFileToByteArray(context.getDecryptedFile());
             int index = content.length - 4;
-            while (content[index - 1] == 0) {
+            while (index > 0 && content[index - 1] == 0) {
                 index--;
             }
 
